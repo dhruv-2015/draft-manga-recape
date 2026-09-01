@@ -99,8 +99,8 @@ const server = http.createServer(async (req, res) => {
       if (action === "runs") {
         const projectId = url.searchParams.get("projectId") ?? undefined;
         const id = url.searchParams.get("id");
-        if (id) return void resEnd(res, json(serverGetRun(id) ?? null));
-        return void resEnd(res, json(serverListRuns(projectId)));
+        if (id) return void resEnd(res, json(await serverGetRun(id) ?? null));
+        return void resEnd(res, json(await serverListRuns(projectId)));
       }
     }
 
@@ -162,21 +162,21 @@ const server = http.createServer(async (req, res) => {
       if (action === "runs") {
         const body = await readBody<{ runId: string; status?: string; patch?: Record<string, unknown> }>(req);
         if (body?.runId) {
-          const run = serverGetRun(body.runId);
+          const run = await serverGetRun(body.runId);
           if (!run) return void resEnd(res, json({ error: "run not found" }, 404));
-          if (body.patch) serverSaveRun({ ...run, ...(body.patch as any), updatedAt: new Date().toISOString() });
+          if (body.patch) await serverSaveRun({ ...run, ...(body.patch as any), updatedAt: new Date().toISOString() });
           return void resEnd(res, json({ ok: true, run }));
         }
         return void resEnd(res, json({ error: "runId required" }, 400));
       }
       if (action === "runs-approve") {
         const b = await readBody<{ runId: string; artifactVersion: string }>(req);
-        serverApproveRun(b.runId, b.artifactVersion);
+        await serverApproveRun(b.runId, b.artifactVersion);
         return void resEnd(res, json({ ok: true }));
       }
       if (action === "runs-reject") {
         const b = await readBody<{ runId: string }>(req);
-        serverRejectRun(b.runId);
+        await serverRejectRun(b.runId);
         return void resEnd(res, json({ ok: true }));
       }
     }
