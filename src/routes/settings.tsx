@@ -79,10 +79,8 @@ function Settings() {
 
       <section className="space-y-3">
         <h2 className="font-semibold text-fuchsia-400">Storage</h2>
-        <div className="flex gap-2">
-          <input value={cfg.projectsRoot} onChange={(e) => upd({ projectsRoot: e.target.value })} className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm" />
-        </div>
-        <p className="text-xs text-zinc-500">Each video project gets its own subfolder here (script, images, audio, videos).</p>
+        <input value={cfg.projectsRoot} onChange={(e) => upd({ projectsRoot: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm" />
+        <p className="text-xs text-zinc-500">Each video project gets its own subfolder here.</p>
       </section>
 
       <section className="space-y-3">
@@ -137,8 +135,8 @@ function Settings() {
         )}
         <div className="flex items-center gap-2">
           <button onClick={() => { const id = 'local-freellm'; if (!cfg.textProviders?.[id]) { upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'http://127.0.0.1:31415/v1', apiKey: 'freellmapi-a39983d3f878f5ca9f13c05cfe3029cbe93cb9dbf27ad5e9', model: 'auto' } }, activeTextProvider: cfg.activeTextProvider || id }); } }} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">+ Add local FreeLLM</button>
-          <input placeholder="new provider name" value={newProvName} onChange={(e) => setNewProvName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: *** model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') } }} className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm w-64" />
-          <button onClick={() => { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: *** model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') }} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">+ Add</button>
+          <input placeholder="new provider name" value={newProvName} onChange={(e) => setNewProvName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: '', model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') } }} className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm w-64" />
+          <button onClick={() => { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: '', model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') }} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">+ Add</button>
           <button onClick={testProvider} disabled={testing || !cfg.activeTextProvider} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm disabled:opacity-40">{testing ? 'Testing…' : 'Test connection'}</button>
         </div>
         {testResult && <p className={`text-sm ${testResult.startsWith('✓') ? 'text-emerald-400' : 'text-red-400'}`}>{testResult}</p>}
