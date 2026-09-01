@@ -82,6 +82,8 @@ function Home() {
           <button onClick={() => { setShowNew(true); setChosenFolder(null) }} className="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 font-medium">
             + New Video
           </button>
+          <Link to="/characters" className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">Characters</Link>
+          <Link to="/runs" className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">Runs</Link>
         </div>
       </div>
 

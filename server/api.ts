@@ -1,5 +1,6 @@
 import http from "node:http";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import { readConfig, saveConfig } from "../src/lib/config.ts";
 import { createProject, listProjects, loadProject, saveProject, deleteProject, browseFolders } from "../src/lib/projects.ts";
@@ -73,6 +74,18 @@ const server = http.createServer(async (req, res) => {
         if (cached) return void resEnd(res, json(cached));
         if (text) return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
         return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
+      }
+      if (action === "file") {
+        const p = url.searchParams.get("path");
+        if (!p) { res.writeHead(400); res.end("missing path"); return; }
+        const abs = path.isAbsolute(p) ? p : path.join(process.cwd(), p);
+        if (!fsSync.existsSync(abs)) { res.writeHead(404); res.end("not found"); return; }
+        const ext = path.extname(abs).slice(1).toLowerCase();
+        const mime = MIME[ext] ?? "application/octet-stream";
+        const stat = fsSync.statSync(abs);
+        res.writeHead(200, { "Content-Type": mime, "Content-Length": stat.size, "Cache-Control": "no-store" });
+        fsSync.createReadStream(abs).pipe(res);
+        return;
       }
       if (action === "characters") return void resEnd(res, json(listCharacters()));
       if (action === "character-variants") {
