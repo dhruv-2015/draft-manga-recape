@@ -10,7 +10,7 @@ import { generateTTS } from "../src/lib/providers/tts.ts";
 import { discoverModels, getCachedOrStatic } from "../src/lib/models/discovery.ts";
 import { loadCache, saveCache } from "../src/lib/models/cache.ts";
 import { worker } from "../src/lib/workers/runWorker.ts";
-import { createCharacter, listCharacters } from "./characters.ts";
+import { createCharacter, listCharacters, createVariant, listVariants, createProjectCharacter, listProjectCharacters } from "./character-data.ts";
 import { approveRun as serverApproveRun, rejectRun as serverRejectRun, getRun as serverGetRun, listRuns as serverListRuns, saveRun as serverSaveRun, addEvent as serverAddEvent, listEvents as serverListEvents, listJobs as serverListJobs, saveJob as serverSaveJob } from "./runs.ts";
 import type { Project } from "../src/lib/projects.ts";
 
@@ -75,6 +75,14 @@ const server = http.createServer(async (req, res) => {
         return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
       }
       if (action === "characters") return void resEnd(res, json(listCharacters()));
+      if (action === "character-variants") {
+        const characterId = url.searchParams.get("characterId") ?? ""
+        return void resEnd(res, json(listVariants(characterId)))
+      }
+      if (action === "project-characters") {
+        const projectId = url.searchParams.get("projectId") ?? ""
+        return void resEnd(res, json(listProjectCharacters(projectId)))
+      }
       if (action === "runs") {
         const projectId = url.searchParams.get("projectId") ?? undefined;
         const id = url.searchParams.get("id");
@@ -129,6 +137,14 @@ const server = http.createServer(async (req, res) => {
       if (action === "characters") {
         const body = await readBody<{ name: string; description?: string; refImagePath?: string }>(req);
         return void resEnd(res, json(createCharacter(body)));
+      }
+      if (action === "character-variants") {
+        const body = await readBody<{ characterId: string; name: string; description?: string }>(req);
+        return void resEnd(res, json(createVariant(body)));
+      }
+      if (action === "project-characters") {
+        const body = await readBody<{ projectId: string; characterId: string; role?: string; aliases?: string[]; description?: string }>(req);
+        return void resEnd(res, json(createProjectCharacter(body)));
       }
       if (action === "runs") {
         const body = await readBody<{ runId: string; status?: string; patch?: Record<string, unknown> }>(req);
