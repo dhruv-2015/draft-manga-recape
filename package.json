@@ -1,0 +1,51 @@
+{
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "generate-routes": "tsr generate",
+    "build": "vite build",
+    "preview": "vite preview",
+    "api": "node --experimental-strip-types server/api.ts",
+    "api:win": "cmd.exe /c start \"manga-api\" /B node --experimental-strip-types server/api.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.56",
+    "@ai-sdk/openai": "^4.0.50",
+    "@ai-sdk/openai-compatible": "^3.0.39",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-devtools": "latest",
+    "@tanstack/react-router": "latest",
+    "@tanstack/react-router-devtools": "latest",
+    "@tanstack/react-start": "latest",
+    "ai": "^7.0.83",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/devtools-vite": "latest",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0",
+    "vite-tsconfig-paths": "^6.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "tsx"
+    ]
+  },
+  "name": "manga-recap-studio"
+}
