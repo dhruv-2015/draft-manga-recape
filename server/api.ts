@@ -10,6 +10,8 @@ import { generateTTS } from "../src/lib/providers/tts.ts";
 import { discoverModels, getCachedOrStatic } from "../src/lib/models/discovery.ts";
 import { loadCache, saveCache } from "../src/lib/models/cache.ts";
 import { worker } from "../src/lib/workers/runWorker.ts";
+import { createCharacter, listCharacters } from "./characters.ts";
+import { approveRun as serverApproveRun, rejectRun as serverRejectRun, getRun as serverGetRun, listRuns as serverListRuns, saveRun as serverSaveRun, addEvent as serverAddEvent, listEvents as serverListEvents, listJobs as serverListJobs, saveJob as serverSaveJob } from "./runs.ts";
 import type { Project } from "../src/lib/projects.ts";
 
 const PORT = 3001;
@@ -72,6 +74,13 @@ const server = http.createServer(async (req, res) => {
         if (text) return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
         return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
       }
+      if (action === "characters") return void resEnd(res, json(listCharacters()));
+      if (action === "runs") {
+        const projectId = url.searchParams.get("projectId") ?? undefined;
+        const id = url.searchParams.get("id");
+        if (id) return void resEnd(res, json(serverGetRun(id) ?? null));
+        return void resEnd(res, json(serverListRuns(projectId)));
+      }
     }
 
     if (req.method === "POST") {
@@ -117,6 +126,30 @@ const server = http.createServer(async (req, res) => {
           return void resEnd(res, json({ error: e?.message ?? String(e), cached: cached ?? null }, 500));
         }
       }
+      if (action === "characters") {
+        const body = await readBody<{ name: string; description?: string; refImagePath?: string }>(req);
+        return void resEnd(res, json(createCharacter(body)));
+      }
+      if (action === "runs") {
+        const body = await readBody<{ runId: string; status?: string; patch?: Record<string, unknown> }>(req);
+        if (body?.runId) {
+          const run = serverGetRun(body.runId);
+          if (!run) return void resEnd(res, json({ error: "run not found" }, 404));
+          if (body.patch) serverSaveRun({ ...run, ...(body.patch as any), updatedAt: new Date().toISOString() });
+          return void resEnd(res, json({ ok: true, run }));
+        }
+        return void resEnd(res, json({ error: "runId required" }, 400));
+      }
+      if (action === "runs-approve") {
+        const b = await readBody<{ runId: string; artifactVersion: string }>(req);
+        serverApproveRun(b.runId, b.artifactVersion);
+        return void resEnd(res, json({ ok: true }));
+      }
+      if (action === "runs-reject") {
+        const b = await readBody<{ runId: string }>(req);
+        serverRejectRun(b.runId);
+        return void resEnd(res, json({ ok: true }));
+      }
     }
 
     res.writeHead(404); res.end("unknown action");
@@ -126,7 +159,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 function resEnd(res: http.ServerResponse, r: Response) {
-  res.writeHead(r.status, { "Content-Type": "application/json" });
+  const status = r.status;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  res.writeHead(status, headers);
   r.text().then((t) => res.end(t));
 }
 

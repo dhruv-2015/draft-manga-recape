@@ -16,12 +16,12 @@ import { putAsset, assetDir } from "#/lib/storage/assetStore";
 const exec = promisify(execFile);
 const FFMPEG = "ffmpeg";
 
-async function runPipeline(runId: string, folder: string, part: number) {
+async function runPipeline(runId: string, folder: string, part: number): Promise<void> {
   const cfg = readConfig();
   const state = runs.get(runId);
   if (!state) return;
-  const run = state.run;
-  const project = loadProject(folder);
+  const run = state.run as GenerationRun;
+  const project = loadProject(folder) as Project | null;
   if (!project) return;
 
   const stages = run.stages ?? ["story", "script", "scene", "image", "voice", "timeline", "render", "qa"];
@@ -62,7 +62,7 @@ async function runPipeline(runId: string, folder: string, part: number) {
   runs.updateRun(runId, { status: "completed", updatedAt: new Date().toISOString() });
 }
 
-export async function startRun(opts: { projectId: string; folder: string; part: number; budgetCents?: number; warningCents?: number }) {
+export async function startRun(opts: { projectId: string; folder: string; part: number; budgetCents?: number; warningCents?: number }): Promise<string> {
   const project = loadProject(opts.folder);
   if (!project) throw new Error("project not found");
 
@@ -105,11 +105,11 @@ export function getRunState(runId: string) {
   return { ...state, jobs: state.jobs, events: state.events };
 }
 
-export function approveRunAndContinue(runId: string, artifactVersion: string) {
+export function approveRunAndContinue(runId: string, artifactVersion: string): void {
   approveRun(runId, artifactVersion);
 }
 
-export function rejectRunAndStop(runId: string) {
+export function rejectRunAndStop(runId: string): void {
   rejectRun(runId);
 }
 
