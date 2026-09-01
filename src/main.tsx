@@ -6,8 +6,7 @@ import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree })
 
 const rootEl = document.getElementById('root')
-const alreadyMounted = !!(rootEl as any)?.__reactFiber$ || !!(rootEl as any)?.__reactInternalInstance
-if (rootEl && !alreadyMounted) {
+if (rootEl) {
   import('react-dom/client').then(({ createRoot }) => {
     createRoot(rootEl).render(
       <StrictMode>
