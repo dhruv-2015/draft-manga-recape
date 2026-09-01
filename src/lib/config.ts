@@ -12,8 +12,8 @@ export type TextProvider = {
 
 export type ImageProvider =
   | { id: string; type: "flow-local"; model: string; refPath?: string; flowUrl?: string }
-  | { id: string; type: "nano-banana-api"; apiKey: string; model?: string }
-  | { id: string; type: "fal-ai"; apiKey: string; model: string }
+  | { id: string; type: "nano-banana-api"; apiKey?: string; model?: string }
+  | { id: string; type: "fal-ai"; apiKey?: string; model: string }
   | { id: string; type: "pollinations" };
 
 export type AppConfig = {

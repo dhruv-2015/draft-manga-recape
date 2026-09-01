@@ -12,7 +12,7 @@ type Job = {
   log: string[]; running: boolean; cancelRequested: boolean; error?: string;
 }
 
-const TABS = ['Overview', 'Script', 'Characters', 'Images', 'Audio', 'Video', 'Files'] as const
+const TABS = ['Overview', 'Story', 'Script', 'Scenes', 'Characters', 'Images', 'Audio', 'Video', 'Runs', 'Files'] as const
 
 function ProjectPage() {
   const { folder } = Route.useSearch()
@@ -22,6 +22,8 @@ function ProjectPage() {
   const [part, setPart] = useState(1)
   const [busy, setBusy] = useState('')
   const [uploadPath, setUploadPath] = useState('')
+  const [approvalState, setApprovalState] = useState<'not_required' | 'pending' | 'approved' | 'rejected'>('not_required')
+  const [costEstimate, setCostEstimate] = useState<{ estimatedCents: number; warningCents: number; hardLimitCents: number } | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   async function loadProject() {
@@ -41,6 +43,7 @@ function ProjectPage() {
         try {
           const j = await fetch(`/api/job?id=${encodeURIComponent(projectId)}`).then((r) => r.json())
           setJob(j)
+          if (j?.stage === 'script') setApprovalState('pending')
         } catch { /* api down */ }
         await new Promise((r) => setTimeout(r, 2000))
       }
@@ -121,8 +124,8 @@ function ProjectPage() {
             ))}
           </select>
           {!running ? (
-            <button onClick={start} className="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 font-medium text-sm">
-              ▶ Generate Part {part}
+            <button onClick={start} disabled={approvalState === 'pending'} className="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 font-medium text-sm disabled:opacity-40">
+              {approvalState === 'pending' ? 'Approval Required' : `▶ Generate Part ${part}`}
             </button>
           ) : (
             <button onClick={cancel} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 font-medium text-sm animate-pulse">
@@ -175,6 +178,22 @@ function ProjectPage() {
               + Continue story (Part {p.parts.length + 1}) — AI continues from section {p.lastSectionId}
             </button>
           )}
+        </div>
+      )}
+
+      {tab === 'Story' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Story Bible</h2>
+            {approvalState === 'pending' && <span className="text-xs px-2 py-1 rounded-full bg-amber-900 text-amber-300">Awaiting approval</span>}
+            {approvalState === 'approved' && <span className="text-xs px-2 py-1 rounded-full bg-emerald-900 text-emerald-300">Approved</span>}
+          </div>
+          <textarea value={p.storyBible} onChange={(e) => setP({ ...p!, storyBible: e.target.value })} onBlur={() => saveProject({ storyBible: p!.storyBible })} rows={8} className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm" />
+          <div className="flex gap-2">
+            <button onClick={() => setApprovalState('pending')} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">Request Approval</button>
+            <button onClick={() => setApprovalState('approved')} className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm">Approve</button>
+            <button onClick={() => setApprovalState('rejected')} className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-sm">Reject</button>
+          </div>
         </div>
       )}
 
@@ -296,6 +315,30 @@ function ProjectPage() {
             </div>
           ))}
           {!p.parts.some((x) => x.finalVideo) && <p className="text-zinc-500">Final video appears here after generation completes.</p>}
+        </div>
+      )}
+
+      {tab === 'Runs' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Generation Runs</h2>
+          <p className="text-xs text-zinc-500">Approval and cost controls are enforced on the server during generation.</p>
+          {approvalState === 'pending' && (
+            <div className="rounded-xl border border-amber-900 bg-amber-900/20 p-4">
+              <h3 className="font-semibold text-amber-300 mb-2">Approval Required</h3>
+              <p className="text-sm text-zinc-300 mb-3">Review story/script before continuing to expensive generation.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setApprovalState('approved')} className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm">Approve & Continue</button>
+                <button onClick={() => setApprovalState('rejected')} className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-sm">Reject</button>
+              </div>
+            </div>
+          )}
+          {costEstimate && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
+              <div>Estimated cost: ${(costEstimate.estimatedCents / 100).toFixed(2)}</div>
+              <div>Warning threshold: ${(costEstimate.warningCents / 100).toFixed(2)}</div>
+              <div>Hard limit: ${(costEstimate.hardLimitCents / 100).toFixed(2)}</div>
+            </div>
+          )}
         </div>
       )}
 

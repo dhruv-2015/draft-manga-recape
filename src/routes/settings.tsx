@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/settings')({ component: Settings })
 
@@ -10,6 +10,8 @@ function Settings() {
   const [showKey, setShowKey] = useState<Record<string, boolean>>({})
   const [testResult, setTestResult] = useState('')
   const [testing, setTesting] = useState(false)
+  const [modelCache, setModelCache] = useState<Record<string, any>>({})
+  const [refreshing, setRefreshing] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetch('/api/config').then((r) => r.json()).then(setCfg)
@@ -52,9 +54,24 @@ function Settings() {
     setTesting(false)
   }
 
+  async function refreshModels(providerId: string) {
+    setRefreshing((s) => ({ ...s, [providerId]: true }))
+    try {
+      const text = cfg.textProviders?.[providerId]
+      const r = await fetch('/api/models-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId, kind: text?.kind ?? 'openai-compatible', baseURL: text?.baseURL, apiKey: text?.apiKey }),
+      }).then((r) => r.json())
+      setModelCache((s) => ({ ...s, [providerId]: r }))
+    } finally {
+      setRefreshing((s) => ({ ...s, [providerId]: false }))
+    }
+  }
+
   if (!cfg) return <div className="p-8 text-zinc-500">Loading…</div>
 
-  const provIds = Object.keys(cfg.textProviders ?? {})
+  const provIds = Object.keys(cfg.textProviders ?? [])
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-8">
@@ -75,6 +92,7 @@ function Settings() {
             {provIds.map((id) => {
               const p = cfg.textProviders[id]
               const isActive = cfg.activeTextProvider === id
+              const cached = modelCache[id]
               return (
                 <div key={id} className={`rounded-xl border p-3 space-y-2 ${isActive ? 'border-fuchsia-600 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50'}`}>
                   <div className="flex items-center justify-between">
@@ -100,20 +118,25 @@ function Settings() {
                       <option value="openai-compatible">OpenAI-compatible</option>
                       <option value="google">Google AI</option>
                     </select>
-                    <input value={p.model ?? ''} onChange={(e) => upd({ textProviders: { ...cfg.textProviders, [id]: { ...p, model: e.target.value } } })} placeholder="model (z-ai/glm-4.6, gemini-2.0-flash…)" className="px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-xs" />
+                    <input value={p.model ?? ''} onChange={(e) => upd({ textProviders: { ...cfg.textProviders, [id]: { ...p, model: e.target.value } } })} placeholder="model" className="px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-xs" />
                     <input value={p.baseURL ?? ''} onChange={(e) => upd({ textProviders: { ...cfg.textProviders, [id]: { ...p, baseURL: e.target.value } } })} placeholder="base URL" className="px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-xs" />
                     <div className="relative">
                       <input type={showKey[id] ? 'text' : 'password'} value={p.apiKey ?? ''} onChange={(e) => upd({ textProviders: { ...cfg.textProviders, [id]: { ...p, apiKey: e.target.value } } })} placeholder="API key" className="w-full px-2 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-xs pr-8" />
                       <button onClick={() => setShowKey({ ...showKey, [id]: !showKey[id] })} className="absolute right-2 top-1.5 text-zinc-500 hover:text-white text-xs">{showKey[id] ? '🙈' : '👁'}</button>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => refreshModels(id)} disabled={refreshing[id]} className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-xs disabled:opacity-40">{refreshing[id] ? 'Refreshing…' : 'Refresh Models'}</button>
+                    {cached && <span className="text-[10px] text-zinc-500">cached: {cached.models?.length ?? 0} models · {new Date(cached.fetchedAt).toLocaleString()}</span>}
+                  </div>
+                  {cached?.error && <p className="text-xs text-red-400">Refresh failed: {cached.error}. Using last successful list if available.</p>}
                 </div>
               )
             })}
           </div>
         )}
         <div className="flex items-center gap-2">
-          <input placeholder="new provider name (openrouter, together…)" value={newProvName} onChange={(e) => setNewProvName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: '', model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') } }} className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm w-64" />
+          <input placeholder="new provider name" value={newProvName} onChange={(e) => setNewProvName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: '', model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') } }} className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm w-64" />
           <button onClick={() => { const id = newProvName.trim().toLowerCase().replace(/\s+/g, '-'); if (!id || cfg.textProviders?.[id]) return; upd({ textProviders: { ...(cfg.textProviders ?? {}), [id]: { id, kind: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: '', model: '' } }, activeTextProvider: cfg.activeTextProvider || id }); setNewProvName('') }} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">+ Add</button>
           <button onClick={testProvider} disabled={testing || !cfg.activeTextProvider} className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm disabled:opacity-40">{testing ? 'Testing…' : 'Test connection'}</button>
         </div>

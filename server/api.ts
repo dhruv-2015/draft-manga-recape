@@ -7,6 +7,9 @@ import { jobs } from "../src/lib/jobManager.ts";
 import { runPipeline } from "../src/lib/pipeline.ts";
 import { generateImage } from "../src/lib/providers/image.ts";
 import { generateTTS } from "../src/lib/providers/tts.ts";
+import { discoverModels, getCachedOrStatic } from "../src/lib/models/discovery.ts";
+import { loadCache, saveCache } from "../src/lib/models/cache.ts";
+import { worker } from "../src/lib/workers/runWorker.ts";
 import type { Project } from "../src/lib/projects.ts";
 
 const PORT = 3001;
@@ -48,15 +51,6 @@ const server = http.createServer(async (req, res) => {
       if (action === "projects") return void resEnd(res, json(listProjects()));
       if (action === "project") return void resEnd(res, json(loadProject(url.searchParams.get("folder") ?? "")));
       if (action === "job") return void resEnd(res, json(jobs.get(url.searchParams.get("id") ?? "") ?? null));
-      if (action === "file") {
-        const p = url.searchParams.get("path") ?? "";
-        const ext = p.split(".").pop()?.toLowerCase() ?? "";
-        if (!p || !MIME[ext]) { res.writeHead(415); res.end(); return; }
-        const buf = await fs.readFile(p);
-        res.writeHead(200, { "Content-Type": MIME[ext], "Content-Length": buf.length });
-        res.end(buf);
-        return;
-      }
       if (action === "docs") {
         const doc = url.searchParams.get("page") ?? "index";
         const docPath = path.join(process.cwd(), "docs", `${doc}.md`);
@@ -68,6 +62,15 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(404); res.end("doc not found");
         }
         return;
+      }
+      if (action === "models") {
+        const providerId = url.searchParams.get("providerId") ?? "";
+        const cfg = readConfig();
+        const text = cfg.textProviders[providerId];
+        const cached = loadCache(providerId);
+        if (cached) return void resEnd(res, json(cached));
+        if (text) return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
+        return void resEnd(res, json({ providerId, models: [], fetchedAt: new Date().toISOString() }));
       }
     }
 
@@ -103,6 +106,16 @@ const server = http.createServer(async (req, res) => {
         const mod = await import("./endpoints/test-text.ts");
         const r = await mod.POST();
         return void resEnd(res, r);
+      }
+      if (action === "models-refresh") {
+        const b = await readBody<{ providerId: string; kind: "openai-compatible" | "google"; baseURL?: string; apiKey?: string }>(req);
+        try {
+          const cache = await discoverModels(b.providerId);
+          return void resEnd(res, json(cache));
+        } catch (e: any) {
+          const cached = loadCache(b.providerId);
+          return void resEnd(res, json({ error: e?.message ?? String(e), cached: cached ?? null }, 500));
+        }
       }
     }
 

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CharactersRouteImport } from './routes/characters'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ProjectRouteImport } from './routes/project'
+import { Route as RunsRouteImport } from './routes/runs'
 import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const ProjectRoute = ProjectRouteImport.update({
   path: '/project',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunsRoute = RunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/characters': typeof CharactersRoute
   '/docs': typeof DocsRoute
   '/project': typeof ProjectRoute
+  '/runs': typeof RunsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/characters': typeof CharactersRoute
   '/docs': typeof DocsRoute
   '/project': typeof ProjectRoute
+  '/runs': typeof RunsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,22 @@ export interface FileRoutesById {
   '/characters': typeof CharactersRoute
   '/docs': typeof DocsRoute
   '/project': typeof ProjectRoute
+  '/runs': typeof RunsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/characters' | '/docs' | '/project' | '/settings'
+  fullPaths: '/' | '/characters' | '/docs' | '/project' | '/runs' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/characters' | '/docs' | '/project' | '/settings'
-  id: '__root__' | '/' | '/characters' | '/docs' | '/project' | '/settings'
+  to: '/' | '/characters' | '/docs' | '/project' | '/runs' | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/characters'
+    | '/docs'
+    | '/project'
+    | '/runs'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +92,7 @@ export interface RootRouteChildren {
   CharactersRoute: typeof CharactersRoute
   DocsRoute: typeof DocsRoute
   ProjectRoute: typeof ProjectRoute
+  RunsRoute: typeof RunsRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -109,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runs': {
+      id: '/runs'
+      path: '/runs'
+      fullPath: '/runs'
+      preLoaderRoute: typeof RunsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -124,6 +148,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersRoute: CharactersRoute,
   DocsRoute: DocsRoute,
   ProjectRoute: ProjectRoute,
+  RunsRoute: RunsRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

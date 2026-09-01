@@ -46,6 +46,6 @@ asyncio.run(main())
     opts.rate ?? "+100%",
     opts.mp3Path,
     opts.srtPath ?? opts.mp3Path.replace(/\.mp3$/, ".srt"),
-  ], { input: opts.text, timeout: 600000, maxBuffer: 10 * 1024 * 1024 });
+  ], { timeout: 600000, maxBuffer: 10 * 1024 * 1024 });
   fs.rmSync(tmp, { force: true });
 }

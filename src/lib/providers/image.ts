@@ -57,10 +57,11 @@ async function pollinations(opts: { prompt: string; outPath: string; signal?: Ab
 }
 
 async function nanoBananaApi(
-  p: { type: "nano-banana-api"; apiKey: string; model?: string },
+  p: { type: "nano-banana-api"; apiKey?: string; model?: string },
   opts: { prompt: string; outPath: string; signal?: AbortSignal }
 ) {
   const key = p.apiKey;
+  if (!key) throw new Error("missing nano-banana api key");
   const model = p.model || "gemini-2.5-flash-image-preview";
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -83,12 +84,14 @@ async function nanoBananaApi(
 }
 
 async function falAi(
-  p: { type: "fal-ai"; apiKey: string; model: string },
+  p: { type: "fal-ai"; apiKey?: string; model: string },
   opts: { prompt: string; outPath: string; signal?: AbortSignal }
 ) {
+  const key = p.apiKey;
+  if (!key) throw new Error("missing fal.ai api key");
   const res = await fetch(`https://fal.run/${p.model}`, {
     method: "POST",
-    headers: { Authorization: `Key ${p.apiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Key ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ prompt: opts.prompt, image_size: "landscape_16_9", num_images: 1 }),
     signal: opts.signal,
   });

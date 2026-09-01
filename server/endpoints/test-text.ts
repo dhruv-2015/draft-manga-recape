@@ -1,4 +1,4 @@
-import { readConfig } from "../src/lib/config.ts";
+import { readConfig } from "../../src/lib/config";
 import { generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
