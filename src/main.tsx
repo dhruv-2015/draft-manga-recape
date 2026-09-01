@@ -7,16 +7,16 @@ const router = createRouter({ routeTree })
 
 declare global {
   interface Window {
-    __mangaRootMounted?: boolean
+    __mangaReactRoot?: unknown
   }
 }
 
-if (!window.__mangaRootMounted) {
-  window.__mangaRootMounted = true
+const rootEl = document.getElementById('root')
+if (rootEl) {
   import('react-dom/client').then(({ createRoot }) => {
-    const rootEl = document.getElementById('root')
-    if (!rootEl) return
-    createRoot(rootEl).render(
+    const root = (window.__mangaReactRoot as any) || createRoot(rootEl)
+    window.__mangaReactRoot = root
+    root.render(
       <StrictMode>
         <RouterProvider router={router} />
       </StrictMode>,
