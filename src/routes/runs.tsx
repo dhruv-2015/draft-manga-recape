@@ -46,7 +46,7 @@ function RunsPage() {
     refresh(); loadDetail(selected)
   }
 
-  const selectedRun = runs.find((r) => r._id === selected) ?? detail
+  const selectedRun = selected ? (runs.find((r) => r._id === selected) ?? null) : null
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-4">
@@ -66,7 +66,7 @@ function RunsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium">Run {selectedRun._id}</div>
-              <div className="text-xs text-zinc-400">status: {(selectedRun as any).status ?? selectedRun.status} · progress: {Math.round(((selectedRun as any).progress ?? 0) * 100)}%</div>
+              <div className="text-xs text-zinc-400">status: {selectedRun.status} · progress: {Math.round((selectedRun.progress ?? 0) * 100)}%</div>
             </div>
             <div className="flex gap-2">
               <button onClick={approve} className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs">Approve</button>
