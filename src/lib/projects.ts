@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { loadConfig } from "./config.ts";
 
 export type Character = {

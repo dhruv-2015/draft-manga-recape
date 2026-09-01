@@ -25,6 +25,7 @@ export type AppConfig = {
   ttsRate: string;
   imageChangeSeconds: number;
   partLengthMinutes: number;
+  flowUrl?: string;
 };
 
 const CONFIG_FILE = "app-config.json";
@@ -46,6 +47,7 @@ export function defaultConfig(): AppConfig {
     ttsRate: "+100%",
     imageChangeSeconds: 3.5,
     partLengthMinutes: 30,
+    flowUrl: "",
   };
 }
 

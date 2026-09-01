@@ -1,7 +1,10 @@
+import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
+import React from 'react'
+
 export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: () => <div className="p-8 text-white">404 — page not found</div>,
-});
+})
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -14,11 +17,11 @@ function Shell({ children }: { children: React.ReactNode }) {
       </head>
       <body>{children}</body>
     </html>
-  );
+  )
 }
 
 function RootComponent() {
-  const loc = useLocation();
+  const loc = useLocation()
   return (
     <Shell>
       <div className="min-h-screen bg-night text-zinc-100 font-sans">
@@ -49,5 +52,5 @@ function RootComponent() {
         <Outlet />
       </div>
     </Shell>
-  );
+  )
 }

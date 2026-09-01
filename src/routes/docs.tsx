@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { getDoc, listDocs } from '~/lib/docs'
 
 export const Route = createFileRoute('/docs')({
   component: DocsPage,
@@ -14,16 +13,25 @@ function DocsPage() {
   const [pages, setPages] = useState<string[]>([])
 
   useEffect(() => {
-    setPages(listDocs())
-    const doc = getDoc(page)
-    if (doc) {
-      const first = doc.split('\n').find((l) => l.startsWith('# '))
-      setTitle(first?.slice(2) ?? page)
-      setContent(doc)
-    } else {
-      setContent('# Not found\n\nThe requested doc page does not exist.')
-      setTitle('Not found')
-    }
+    fetch('/api/docs')
+      .then((r) => r.json())
+      .then((data) => setPages(data.pages ?? []))
+      .catch(() => setPages([]))
+  }, [])
+
+  useEffect(() => {
+    fetch(`/api/docs?page=${encodeURIComponent(page)}`)
+      .then((r) => r.text())
+      .then((text) => {
+        const lines = text.split('\n')
+        const first = lines.find((l) => l.startsWith('# '))
+        setTitle(first?.slice(2) ?? page)
+        setContent(text)
+      })
+      .catch(() => {
+        setContent('# Not found\n\nThe requested doc page does not exist.')
+        setTitle('Not found')
+      })
   }, [page])
 
   return (

@@ -1,7 +1,7 @@
+import { readConfig } from "../src/lib/config.ts";
+import { generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateText } from "ai";
-import { readConfig, type TextProvider } from "../config.ts";
 
 export async function POST() {
   try {

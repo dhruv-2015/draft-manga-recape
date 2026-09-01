@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import type { Project } from '~/lib/projects'
+import type { Project } from '#/lib/projects'
 
 export const Route = createFileRoute('/')({
   component: Home,
