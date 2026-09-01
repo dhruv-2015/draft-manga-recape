@@ -6,10 +6,10 @@ import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree })
 
 const rootEl = document.getElementById('root')
-if (rootEl && !(window as any).__mangaReactRoot) {
+if (rootEl && !(rootEl as any).__mounted) {
+  ;(rootEl as any).__mounted = true
   import('react-dom/client').then(({ createRoot }) => {
     const root = createRoot(rootEl)
-    ;(window as any).__mangaReactRoot = root
     root.render(
       <StrictMode>
         <RouterProvider router={router} />
