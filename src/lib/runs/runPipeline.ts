@@ -12,24 +12,64 @@ import { runs } from "#/lib/runs/runStore";
 import type { GenerationRun, GenerationJob } from "#/lib/domain/types";
 import { checkBudgetBeforeSchedule, ensureApproved, approveRun, rejectRun } from "#/lib/runs/approval";
 import { putAsset, assetDir } from "#/lib/storage/assetStore";
+import { db } from "#/lib/storage/mongo";
 
 const exec = promisify(execFile);
 const FFMPEG = "ffmpeg";
 
+async function ensureRun(runId: string, projectId: string, folder: string): Promise<GenerationRun> {
+  let state = runs.get(runId);
+  if (!state) {
+    const run: GenerationRun = {
+      _id: runId,
+      projectId,
+      partId: `${projectId}::part`,
+      status: "pending",
+      progress: 0,
+      stages: ["title", "script", "characters", "scene-planning", "images", "audio", "segments", "final", "qa"],
+      approvalState: "not_required",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    runs.create(run);
+    await db.generationRuns().then((c) => c.save(run as any));
+    const stageJobs: GenerationJob[] = [
+      makeJob(runId, projectId, `${projectId}::part`, "story", 0),
+      makeJob(runId, projectId, `${projectId}::part`, "script", 1),
+      makeJob(runId, projectId, `${projectId}::part`, "scene", 2),
+      makeJob(runId, projectId, `${projectId}::part`, "image", 3),
+      makeJob(runId, projectId, `${projectId}::part`, "voice", 4),
+      makeJob(runId, projectId, `${projectId}::part`, "timeline", 5),
+      makeJob(runId, projectId, `${projectId}::part`, "render", 6),
+      makeJob(runId, projectId, `${projectId}::part`, "qa", 7),
+    ];
+    for (const j of stageJobs) {
+      runs.addJob(j);
+      await db.generationJobs().then((c) => c.save(j as any));
+    }
+    state = runs.get(runId)!;
+  }
+  return state.run;
+}
+
 async function runPipeline(runId: string, folder: string, part: number): Promise<void> {
   const cfg = readConfig();
-  const state = runs.get(runId);
-  if (!state) return;
-  const run = state.run as GenerationRun;
   const project = loadProject(folder) as Project | null;
   if (!project) return;
 
+  const projectId = `${folder}::${part}`;
+  const run = await ensureRun(runId, projectId, folder);
+
+  const state = runs.get(runId);
+  if (!state) return;
   const stages = run.stages ?? ["story", "script", "scene", "image", "voice", "timeline", "render", "qa"];
   const projectDir = assetDir(project.folder);
   for (const stage of stages) {
     if (run.status === "cancelling" || run.status === "cancelled") break;
-    const job = makeJob(runId, project.folder, `${project.folder}::part`, stage as GenerationJob["type"], stages.indexOf(stage));
+    const job = makeJob(runId, projectId, `${projectId}::part`, stage as GenerationJob["type"], stages.indexOf(stage));
     runs.addJob(job);
+    await db.generationJobs().then((c) => c.save(job as any));
+    await db.generationEvents().then((c) => c.save({ _id: crypto.randomUUID(), runId, type: "started", createdAt: new Date().toISOString() } as any));
     runs.updateJob(job._id, { status: "running", updatedAt: new Date().toISOString() });
     jobs.logMsg(project.folder, `[${runId}] ${stage}: started`);
     try {
@@ -53,49 +93,23 @@ async function runPipeline(runId: string, folder: string, part: number): Promise
         await new Promise((r) => setTimeout(r, 300));
       }
       runs.updateJob(job._id, { status: "completed", updatedAt: new Date().toISOString() });
+      await db.generationJobs().then((c) => c.save({ ...job, status: "completed", updatedAt: new Date().toISOString() } as any));
+      await db.generationEvents().then((c) => c.save({ _id: crypto.randomUUID(), runId, type: "completed", createdAt: new Date().toISOString() } as any));
     } catch (e: unknown) {
       runs.updateJob(job._id, { status: "failed", error: (e as any)?.message ?? String(e), updatedAt: new Date().toISOString() });
+      await db.generationJobs().then((c) => c.save({ ...job, status: "failed", error: (e as any)?.message ?? String(e), updatedAt: new Date().toISOString() } as any));
+      await db.generationEvents().then((c) => c.save({ _id: crypto.randomUUID(), runId, type: "failed", createdAt: new Date().toISOString() } as any));
       jobs.logMsg(project.folder, `[${runId}] ${stage}: failed ${(e as any)?.message ?? e}`);
       if (stage === "story" || stage === "script") break;
     }
   }
   runs.updateRun(runId, { status: "completed", updatedAt: new Date().toISOString() });
+  await db.generationRuns().then((c) => c.save({ ...run, status: "completed", updatedAt: new Date().toISOString() } as any));
 }
 
 export async function startRun(opts: { projectId: string; folder: string; part: number; budgetCents?: number; warningCents?: number }): Promise<string> {
-  const project = loadProject(opts.folder);
-  if (!project) throw new Error("project not found");
-
   const runId = crypto.randomUUID();
-  const run: GenerationRun = {
-    _id: runId,
-    projectId: opts.projectId,
-    partId: `${opts.projectId}::part`,
-    status: "pending",
-    progress: 0,
-    stages: ["title", "script", "characters", "scene-planning", "images", "audio", "segments", "final", "qa"],
-    costEstimatedCents: opts.budgetCents,
-    costWarningThresholdCents: opts.warningCents,
-    costHardLimitCents: opts.budgetCents,
-    approvalState: "not_required",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  runs.create(run);
-
-  const stageJobs: GenerationJob[] = [
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "story", 0),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "script", 1),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "scene", 2),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "image", 3),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "voice", 4),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "timeline", 5),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "render", 6),
-    makeJob(runId, opts.projectId, `${opts.projectId}::part`, "qa", 7),
-  ];
-  for (const j of stageJobs) runs.addJob(j);
-
-  runPipeline(runId, opts.folder, opts.part).catch((e: unknown) => jobs.logMsg(opts.projectId, `fatal: ${(e as any)?.message ?? e}`));
+  await runPipeline(runId, opts.folder, opts.part);
   return runId;
 }
 

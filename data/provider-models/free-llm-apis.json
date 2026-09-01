@@ -1,0 +1,27 @@
+{
+  "_id": "free-llm-apis",
+  "providerId": "free-llm-apis",
+  "models": [
+    {
+      "providerModelId": "gpt-4o-mini",
+      "name": "GPT-4o mini",
+      "capability": {
+        "text": true,
+        "toolCalling": true,
+        "structuredOutput": true
+      },
+      "source": "static"
+    },
+    {
+      "providerModelId": "gpt-4o",
+      "name": "GPT-4o",
+      "capability": {
+        "text": true,
+        "toolCalling": true,
+        "structuredOutput": true
+      },
+      "source": "static"
+    }
+  ],
+  "fetchedAt": "2026-09-01T20:50:09.097Z"
+}
