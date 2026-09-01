@@ -5,21 +5,12 @@ import { routeTree } from './routeTree.gen'
 
 const router = createRouter({ routeTree })
 
+let mounted = false
 const rootEl = document.getElementById('root')
-if (rootEl) {
+if (rootEl && !mounted) {
+  mounted = true
   import('react-dom/client').then(({ createRoot }) => {
-    const existing = (rootEl as any).__reactRoot
-    if (existing) {
-      existing.render(
-        <StrictMode>
-          <RouterProvider router={router} />
-        </StrictMode>,
-      )
-      return
-    }
-    const root = createRoot(rootEl)
-    ;(rootEl as any).__reactRoot = root
-    root.render(
+    createRoot(rootEl).render(
       <StrictMode>
         <RouterProvider router={router} />
       </StrictMode>,
