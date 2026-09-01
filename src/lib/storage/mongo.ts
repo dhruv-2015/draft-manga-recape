@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Project, Part, StoryBible, Character, Scene, Shot, Asset, GenerationRun, GenerationJob, GenerationEvent, StoryStateSnapshot, CharacterVariant, CharacterReference, ProjectCharacter, CharacterAppearanceEvent, Timeline, ProviderConnection, ProviderModelCache, GenerationProfile } from "./types.ts";
+import type { Project, Part, StoryBible, Character, Scene, Shot, Asset, GenerationRun, GenerationJob, GenerationEvent, StoryStateSnapshot, CharacterVariant, CharacterReference, ProjectCharacter, CharacterAppearanceEvent, Timeline, ProviderConnection, ProviderModelCache, GenerationProfile } from "#/lib/domain/types";
+
 
 const DATA_DIR = path.join(process.cwd(), "data", "db");
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { Project } from '#/lib/projects'
 
@@ -52,7 +52,7 @@ function ProjectPage() {
     return () => { stop = true }
   }, [projectId])
 
-  useEffect(() => { logRef?.scrollTo({ top: 999999 }) }, [job?.log?.length])
+  useEffect(() => { if (logRef.current) logRef.current.scrollTo({ top: 999999 }) }, [job?.log?.length])
 
   if (!p) return <div className="p-8 text-zinc-500">Loading…</div>
 

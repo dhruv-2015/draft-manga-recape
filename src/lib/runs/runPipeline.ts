@@ -8,12 +8,59 @@ import { readConfig } from "#/lib/config";
 import { generateTextWith } from "#/lib/providers/text";
 import { generateImage } from "#/lib/providers/image";
 import { generateTTS } from "#/lib/providers/tts";
-import { runs, type GenerationRun, type GenerationJob } from "#/lib/runs/runStore";
+import { runs } from "#/lib/runs/runStore";
+import type { GenerationRun, GenerationJob } from "#/lib/domain/types";
 import { checkBudgetBeforeSchedule, ensureApproved, approveRun, rejectRun } from "#/lib/runs/approval";
 import { putAsset, assetDir } from "#/lib/storage/assetStore";
 
 const exec = promisify(execFile);
 const FFMPEG = "ffmpeg";
+
+async function runPipeline(runId: string, folder: string, part: number) {
+  const cfg = readConfig();
+  const state = runs.get(runId);
+  if (!state) return;
+  const run = state.run;
+  const project = loadProject(folder);
+  if (!project) return;
+
+  const stages = run.stages ?? ["story", "script", "scene", "image", "voice", "timeline", "render", "qa"];
+  const projectDir = assetDir(project.folder);
+  for (const stage of stages) {
+    if (run.status === "cancelling" || run.status === "cancelled") break;
+    const job = makeJob(runId, project.folder, `${project.folder}::part`, stage as GenerationJob["type"], stages.indexOf(stage));
+    runs.addJob(job);
+    runs.updateJob(job._id, { status: "running", updatedAt: new Date().toISOString() });
+    jobs.logMsg(project.folder, `[${runId}] ${stage}: started`);
+    try {
+      if (stage === "story" || stage === "script") {
+        const text = await generateTextWith({ providerId: cfg.activeTextProvider ?? Object.keys(cfg.textProviders ?? {})[0], prompt: `Generate a manga recap script for part ${part} of ${project.title}` });
+        jobs.logMsg(project.folder, `[${runId}] ${stage}: text generated`);
+      } else if (stage === "image") {
+        const outPath = path.join(projectDir, `work`, `scene-${Date.now()}.png`);
+        await generateImage({ prompt: `Manga recap scene ${part}`, outPath });
+        jobs.logMsg(project.folder, `[${runId}] ${stage}: image generated`);
+      } else if (stage === "voice") {
+        const mp3 = path.join(projectDir, "audio", `voice-${Date.now()}.mp3`);
+        await generateTTS({ text: "Hello world", mp3Path: mp3, voice: cfg.ttsVoice, rate: cfg.ttsRate });
+        jobs.logMsg(project.folder, `[${runId}] ${stage}: tts generated`);
+      } else if (stage === "render") {
+        const out = path.join(projectDir, `segments`, `part-${part}.mp4`);
+        const args = ["-y", "-f", "lavfi", "-i", "color=c=black:s=1280x720:d=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", out];
+        await exec(FFMPEG, args, { maxBuffer: 1024 * 1024 * 1024 });
+        jobs.logMsg(project.folder, `[${runId}] ${stage}: rendered ${out}`);
+      } else {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      runs.updateJob(job._id, { status: "completed", updatedAt: new Date().toISOString() });
+    } catch (e: unknown) {
+      runs.updateJob(job._id, { status: "failed", error: (e as any)?.message ?? String(e), updatedAt: new Date().toISOString() });
+      jobs.logMsg(project.folder, `[${runId}] ${stage}: failed ${(e as any)?.message ?? e}`);
+      if (stage === "story" || stage === "script") break;
+    }
+  }
+  runs.updateRun(runId, { status: "completed", updatedAt: new Date().toISOString() });
+}
 
 export async function startRun(opts: { projectId: string; folder: string; part: number; budgetCents?: number; warningCents?: number }) {
   const project = loadProject(opts.folder);
@@ -48,7 +95,7 @@ export async function startRun(opts: { projectId: string; folder: string; part: 
   ];
   for (const j of stageJobs) runs.addJob(j);
 
-  runPipeline(runId, opts.folder, opts.part).catch((e) => jobs.logMsg(opts.projectId, `fatal: ${e?.message ?? e}`));
+  runPipeline(runId, opts.folder, opts.part).catch((e: unknown) => jobs.logMsg(opts.projectId, `fatal: ${(e as any)?.message ?? e}`));
   return runId;
 }
 
