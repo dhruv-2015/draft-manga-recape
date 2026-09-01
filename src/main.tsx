@@ -8,7 +8,7 @@ const router = createRouter({ routeTree })
 const rootEl = document.getElementById('root')
 if (rootEl) {
   import('react-dom/client').then(({ createRoot }) => {
-    const existing = (rootEl as any).__reactRoot
+    const existing = (window as any).__reactRoot
     if (existing) {
       existing.render(
         <StrictMode>
@@ -18,7 +18,7 @@ if (rootEl) {
       return
     }
     const root = createRoot(rootEl)
-    ;(rootEl as any).__reactRoot = root
+    ;(window as any).__reactRoot = root
     root.render(
       <StrictMode>
         <RouterProvider router={router} />
