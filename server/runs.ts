@@ -57,3 +57,22 @@ export async function approveRun(runId: string, artifactVersion: string) {
 export async function rejectRun(runId: string) {
   await updateRunStatus(runId, { approvalState: "rejected" });
 }
+
+export async function startRun(runId: string, partId: string, patch: Partial<RunRecord> = {}): Promise<RunRecord | undefined> {
+  const existing = await getRun(runId);
+  if (existing) return existing;
+  const run: RunRecord = {
+    _id: runId,
+    projectId: runId.split("::")[0] ?? runId,
+    partId,
+    status: patch.status ?? "pending",
+    progress: 0,
+    stages: patch.stages ?? ["story", "script", "scene", "image", "voice", "timeline", "render", "qa"],
+    approvalState: patch.approvalState ?? "not_required",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...patch,
+  } as RunRecord;
+  await saveRun(run);
+  return run;
+}

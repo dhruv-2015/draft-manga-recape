@@ -5,14 +5,14 @@ import path from "node:path";
 import { readConfig, saveConfig } from "../src/lib/config.ts";
 import { createProject, listProjects, loadProject, saveProject, deleteProject, browseFolders } from "../src/lib/projects.ts";
 import { jobs } from "../src/lib/jobManager.ts";
-import { runPipeline } from "../src/lib/pipeline.ts";
+import { startRun } from "../src/lib/runs/runPipeline.ts";
 import { generateImage } from "../src/lib/providers/image.ts";
 import { generateTTS } from "../src/lib/providers/tts.ts";
 import { discoverModels, getCachedOrStatic } from "../src/lib/models/discovery.ts";
 import { loadCache, saveCache } from "../src/lib/models/cache.ts";
 import { worker } from "../src/lib/workers/runWorker.ts";
 import { createCharacter, listCharacters, createVariant, listVariants, createProjectCharacter, listProjectCharacters } from "./character-data.ts";
-import { approveRun as serverApproveRun, rejectRun as serverRejectRun, getRun as serverGetRun, listRuns as serverListRuns, saveRun as serverSaveRun, addEvent as serverAddEvent, listEvents as serverListEvents, listJobs as serverListJobs, saveJob as serverSaveJob } from "./runs.ts";
+import { approveRun as serverApproveRun, rejectRun as serverRejectRun, getRun as serverGetRun, listRuns as serverListRuns, saveRun as serverSaveRun, addEvent as serverAddEvent, listEvents as serverListEvents, listJobs as serverListJobs, saveJob as serverSaveJob, startRun as serverStartRun } from "./runs.ts";
 import type { Project } from "../src/lib/projects.ts";
 
 const PORT = 3001;
@@ -100,7 +100,8 @@ const server = http.createServer(async (req, res) => {
         const projectId = url.searchParams.get("projectId") ?? undefined;
         const id = url.searchParams.get("id");
         if (id) return void resEnd(res, json(await serverGetRun(id) ?? null));
-        return void resEnd(res, json(await serverListRuns(projectId)));
+        const runs = await serverListRuns(projectId);
+        return void resEnd(res, json(runs));
       }
     }
 
@@ -115,7 +116,14 @@ const server = http.createServer(async (req, res) => {
         if (!p) return void resEnd(res, json({ error: "project not found" }, 404));
         const projectId = `${b.folder}::${b.part}`;
         jobs.start(projectId, b.folder, b.part);
-        runPipeline(projectId, b.folder, b.part).catch((e) => jobs.logMsg(projectId, `fatal: ${e?.message ?? e}`));
+        const started = await serverStartRun(projectId, b.part.toString(), {
+          status: "pending",
+          stages: ["story", "script", "scene", "image", "voice", "timeline", "render", "qa"],
+          approvalState: "not_required",
+        });
+        if (started) {
+          startRun({ projectId, folder: b.folder, part: b.part }).catch((e) => jobs.logMsg(projectId, `fatal: ${e?.message ?? e}`));
+        }
         return void resEnd(res, json({ projectId }));
       }
       if (action === "cancel") {
@@ -194,4 +202,15 @@ function resEnd(res: http.ServerResponse, r: Response) {
   r.text().then((t) => res.end(t));
 }
 
-server.listen(PORT, () => console.log(`[api] listening on http://localhost:${PORT}`));
+async function startServer() {
+  await new Promise<void>((resolve) => {
+    server.on("error", (err: any) => {
+      console.error(`[api] listen failed: ${err?.message ?? err}`);
+      process.exit(1);
+    });
+    server.listen(PORT, resolve);
+  });
+  console.log(`[api] listening on http://localhost:${PORT}`);
+}
+
+startServer();
