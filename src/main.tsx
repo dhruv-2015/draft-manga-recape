@@ -5,17 +5,23 @@ import { routeTree } from './routeTree.gen'
 
 const router = createRouter({ routeTree })
 
-const rootEl = document.getElementById('root')
-if (rootEl && !(rootEl as any).__mounted) {
-  ;(rootEl as any).__mounted = true
+declare global {
+  interface Window {
+    __mangaRootMounted?: boolean
+  }
+}
+
+if (!window.__mangaRootMounted) {
+  window.__mangaRootMounted = true
   import('react-dom/client').then(({ createRoot }) => {
-    const root = createRoot(rootEl)
-    root.render(
+    const rootEl = document.getElementById('root')
+    if (!rootEl) return
+    createRoot(rootEl).render(
       <StrictMode>
         <RouterProvider router={router} />
       </StrictMode>,
     )
-  })
+  }).catch(() => {})
 }
 
 if (import.meta.hot) import.meta.hot.accept()
